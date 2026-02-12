@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:16
+    image: ankane/pgvector
     container_name: ai_postgres
     environment:
       POSTGRES_USER: postgres
@@ -13,6 +13,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_service
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
   spring-app:
     build: .
     container_name: spring_ai_app
@@ -20,10 +29,13 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
+      - ollama
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ai_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      OLLAMA_BASE_URL: http://ollama:11434
 
 volumes:
   postgres_data:
+  ollama_models:
