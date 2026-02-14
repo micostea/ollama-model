@@ -12,6 +12,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql
+      - ./init-vector-store.sql:/docker-entrypoint-initdb.d/init-vector-store.sql
+
 
   ollama:
     image: ollama/ollama:latest
@@ -23,8 +26,12 @@ services:
     entrypoint: >
       sh -c "
         ollama serve &
-        sleep 5
+        until curl -s http://localhost:11434/api/tags >/dev/null; do
+          echo 'Waiting for Ollama...'
+          sleep 2
+        done
         ollama pull llama3.1:8b
+        ollama pull nomic-embed-text
         wait
       "
     restart: unless-stopped
