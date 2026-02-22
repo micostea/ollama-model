@@ -15,7 +15,6 @@ services:
       - ./init-pgvector.sql:/docker-entrypoint-initdb.d/init-pgvector.sql
       - ./init-vector-store.sql:/docker-entrypoint-initdb.d/init-vector-store.sql
 
-
   ollama:
     image: ollama/ollama:latest
     container_name: ollama_service
@@ -23,18 +22,26 @@ services:
       - "11434:11434"
     volumes:
       - ollama_models:/root/.ollama
+    command: serve
+    restart: unless-stopped
+
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: ollama_init
+    depends_on:
+      - ollama
     entrypoint: >
       sh -c "
-        ollama serve &
-        until curl -s http://localhost:11434/api/tags >/dev/null; do
-          echo 'Waiting for Ollama...'
-          sleep 2
-        done
-        ollama pull llama3.1:8b
-        ollama pull nomic-embed-text
-        wait
+        echo 'Waiting for Ollama...';
+        until curl -s http://ollama:11434/api/tags >/dev/null; do
+          sleep 2;
+        done;
+        echo 'Ollama is ready. Pulling models...';
+        curl -X POST http://ollama:11434/api/pull -d '{\"name\":\"llama3.1:8b\"}';
+        curl -X POST http://ollama:11434/api/pull -d '{\"name\":\"nomic-embed-text\"}';
+        echo 'Models downloaded.';
       "
-    restart: unless-stopped
+    restart: "no"
 
   spring-app:
     build: .
